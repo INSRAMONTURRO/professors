@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enviament Massiu d'Informes - Scripts</title>
+    <meta name="description" content="Detall del script d'enviament massiu per a Google Workspace.">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <a href="index.html"><img src="img/LogoINS_p.png" alt="Logo INS Ramon Turró i Darder"></a>
+        <nav>
+            <ul>
+                <li><a href="index.html">Inici</a></li>
+                <li><a href="models.html">Models</a></li>
+                <li><a href="protocols.html">Protocols</a></li>
+                <li><a href="scripts.html" class="active">Scripts Google</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <div style="margin-bottom: 2rem;">
+            <a href="scripts.html" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem;">
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                Tornar als Scripts
+            </a>
+        </div>
+        
+        <div class="markdown-body">
+            <h2>🚀 Enviament Massiu d'Informes Personalitzats (Google Workspace)</h2>
+            <p>Aquest projecte permet automatitzar l'enviament de correus electrònics a una llista d'alumnes, adjuntant a cadascun el seu fitxer corresponent (PDF, Doc, etc.) cercat automàticament en una estructura de carpetes a Google Drive.</p>
+            <p>És una solució ideal per a centres educatius que necessiten enviar butlletins de notes o informes de qualificacions de forma massiva i segura.</p>
+
+            <h3>📋 Característiques</h3>
+            <ul>
+                <li><strong>Cerca automàtica per RAL/Referència:</strong> L'script busca el fitxer que contingui el codi de l'alumne en qualsevol subcarpeta.</li>
+                <li><strong>Multireceptor:</strong> Permet enviar el mateix correu a dues adreces simultàniament (ex. pare i mare).</li>
+                <li><strong>Personalització dinàmica:</strong> Substitució automàtica del nom de l'alumne en l'assumpte i el cos del missatge.</li>
+                <li><strong>Gestió d'estat:</strong> Marca les files com a "Enviat" per evitar duplicats i permetre reprendre el procés si s'atura.</li>
+                <li><strong>Panell de control:</strong> Configuració total des del mateix full de càlcul (sense tocar el codi).</li>
+            </ul>
+
+            <h3>🛠️ Requisits i Estructura</h3>
+            
+            <h4>1. Google Drive</h4>
+            <ul>
+                <li>Una <strong>Carpeta Arrel</strong> que contingui els fitxers (poden estar organitzats en subcarpetes per curs, l'script les explorarà totes).</li>
+                <li>Els fitxers han de tenir en el seu nom el codi de referència (RAL) que apareix al full de càlcul.</li>
+            </ul>
+
+            <h4>2. Full de Càlcul (Google Sheets)</h4>
+            <p>El fitxer de Google Sheets ha de tenir dues pestanyes obligatòries:</p>
+
+            <strong>Pestanya 1: <code>Dades</code> (o qualsevol nom, però ha de ser la primera)</strong>
+            <table>
+                <thead>
+                    <tr><th>Nom</th><th>Cognoms</th><th>RAL / Ref</th><th>Correu 1</th><th>Correu 2</th><th>Estat</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>...</td><td>...</td><td>...</td><td>...</td><td>...</td><td>...</td></tr>
+                </tbody>
+            </table>
+
+            <strong>Pestanya 2: <code>Configuracio</code> (nom exacte)</strong>
+            <table>
+                <tbody>
+                    <tr><td><strong>ID Carpeta Arrel</strong></td><td>[L'ID de la teva carpeta de Drive]</td></tr>
+                    <tr><td><strong>Assumpte Base</strong></td><td>Informe de qualificacions -</td></tr>
+                    <tr><td><strong>Nom Remitent</strong></td><td>Secretaria de l'Escola</td></tr>
+                    <tr><td><strong>Cos del Missatge</strong></td><td>Bon dia, \n\n Us adjuntem l'informe de {nom}...</td></tr>
+                </tbody>
+            </table>
+            
+            <blockquote><strong>Truc per a salts de línia:</strong> Per fer salts de línia al cos del missatge dins la cel·la de Google Sheets, prem <code>Alt + Intro</code>.</blockquote>
+
+            <h3>💻 El Codi (Google Apps Script)</h3>
+            <p>Per instal·lar-lo, ves al teu full de càlcul, entra a <code>Extensions > Apps Script</code>, esborra-ho tot i enganxa el codi següent:</p>
+
+            <div class="code-container">
+                <button class="copy-btn" onclick="copyCode(this)">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    <span>Copiar Codi</span>
+                </button>
+                <pre><code>/**
+ * CREACIÓ DEL MENÚ AMB DUES OPCIONS D'AJUDA
+ */
+function onOpen() {
+    const ui = SpreadsheetApp.getUi();
+    ui.createMenu('🚀 Enviament Massiu')
+        .addItem('❓ Com funciona?', 'mostrarFuncionament')
+        .addItem('⚙️ Guia de Configuració', 'mostrarInstruccions')
+        .addSeparator()
+        .addItem('📧 ENVIAR CORREUS', 'confirmarEnviament')
+        .addToUi();
+}
+
+/**
+ * MISSATGE EXPLICATIU DEL FUNCIONAMENT (CONCEPTUAL)
+ */
+function mostrarFuncionament() {
+    const ui = SpreadsheetApp.getUi();
+    const títol = "Com funciona aquest sistema?";
+    const missatge =
+        "Aquest script automatitza l'enviament d'informes personalitzats:\n\n" +
+        "1. L'script entra a la carpeta principal que hagis indicat.\n" +
+        "2. Reconeix totes les subcarpetes (cursos) i en fa un inventari intern.\n" +
+        "3. Per a cada alumne del full, busca un fitxer que contingui el seu RAL (Columna C).\n" +
+        "4. Si el troba, envia un correu personalitzat als correus de les columnes D i E.\n" +
+        "5. Finalment, marca la fila com a 'Enviat' per no repetir el procés si el tornes a llançar.";
+    ui.alert(títol, missatge, ui.ButtonSet.OK);
+}
+
+/**
+ * GUIA DE CONFIGURACIÓ (TÈCNICA)
+ */
+function mostrarInstruccions() {
+    const ui = SpreadsheetApp.getUi();
+    const títol = "Guia de Configuració Tècnica";
+    const missatge =
+        "REQUISITS DELS FULLS:\n\n" +
+        "1. PESTANYA 'Configuracio':\n" +
+        " - B1: ID de la carpeta de Drive.\n" +
+        " - B2: Assumpte (ex: Informe de...).\n" +
+        " - B3: Nom que vols que aparegui com a remitent.\n" +
+        " - B4: Text del missatge. Usa {nom} per posar el nom de l'alumne i \\n per fer salts de línia.\n\n" +
+        "2. PESTANYA DE DADES (La primera de totes):\n" +
+        " - A: Nom | B: Cognoms | C: RAL | D: Correu 1 | E: Correu 2 | F: Estat.\n\n" +
+        "3. ELS FITXERS:\n" +
+        " - El número RAL de la columna C ha de formar part del nom del fitxer de Drive.";
+    ui.alert(títol, missatge, ui.ButtonSet.OK);
+}
+
+/**
+ * CONFIRMACIÓ I ENVIAMENT
+ */
+function confirmarEnviament() {
+    const ui = SpreadsheetApp.getUi();
+    const resposta = ui.alert('Confirmació d\'enviament', 'Estàs a punt d\'enviar els correus segons la configuració del full. Vols continuar?', ui.ButtonSet.YES_NO);
+    if (resposta == ui.Button.YES) enviarInformesMassius();
+}
+
+function enviarInformesMassius() {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const fullDades = ss.getSheets()[0];
+    const fullConfig = ss.getSheetByName("Configuracio");
+    if (!fullConfig) {
+        SpreadsheetApp.getUi().alert("Error: No s'ha trobat el full 'Configuracio'");
+        return;
+    }
+
+    // LECTURA DE LA CONFIGURACIÓ DEL FULL
+    const valorsConfig = fullConfig.getRange("B1:B4").getValues();
+    const idCarpeta = valorsConfig[0][0];
+    const assumpteBase = valorsConfig[1][0];
+    const nomRemitent = valorsConfig[2][0];
+    const cosBase = valorsConfig[3][0];
+    const dades = fullDades.getDataRange().getValues();
+    const carpetaArrel = DriveApp.getFolderById(idCarpeta);
+
+    console.log("Creant inventari de fitxers...");
+    let diccionariFitxers = {};
+    indexarCarpetaRecursivament(carpetaArrel, diccionariFitxers);
+    let comptador = 0;
+
+    for (let i = 1; i < dades.length; i++) {
+        let nomComplet = dades[i][0] + " " + dades[i][1];
+        let referencia = dades[i][2].toString().trim();
+        let correu1 = dades[i][3];
+        let correu2 = dades[i][4];
+        let estat = dades[i][5];
+
+        // Condicions per saltar la fila
+        if (estat === "Enviat" || !referencia || !dades[i][0]) continue;
+
+        let fitxerTrobat = null;
+        for (let nomFitxer in diccionariFitxers) {
+            if (nomFitxer.includes(referencia)) {
+                fitxerTrobat = diccionariFitxers[nomFitxer];
+                break;
+            }
+        }
+
+        if (fitxerTrobat) {
+            try {
+                let llistaCorreus = [correu1, correu2].filter(c => c !== "" && c !== null);
+                if (llistaCorreus.length > 0) {
+                    let assumpte = assumpteBase + nomComplet;
+                    let cos = cosBase.replace("{nom}", nomComplet).replace(/\\n/g, "\n");
+                    GmailApp.sendEmail(llistaCorreus.join(","), assumpte, cos, {
+                        attachments: [fitxerTrobat.getBlob()],
+                        name: nomRemitent
+                    });
+                    fullDades.getRange(i + 1, 6).setValue("Enviat");
+                    comptador++;
+                }
+            } catch (e) {
+                fullDades.getRange(i + 1, 6).setValue("Error: " + e.toString());
+            }
+        } else {
+            fullDades.getRange(i + 1, 6).setValue("Error: Fitxer no trobat");
+        }
+    }
+    SpreadsheetApp.getUi().alert('Procés acabat', 'S\'han enviat ' + comptador + ' correus correctament.', SpreadsheetApp.getUi().ButtonSet.OK);
+}
+
+/**
+ * FUNCIÓ RECURSIVA PER EXPLORAR CARPETES
+ */
+function indexarCarpetaRecursivament(carpeta, diccionari) {
+    let fitxers = carpeta.getFiles();
+    while (fitxers.hasNext()) {
+        let f = fitxers.next();
+        diccionari[f.getName()] = f;
+    }
+    let subcarpetes = carpeta.getFolders();
+    while (subcarpetes.hasNext()) {
+        indexarCarpetaRecursivament(subcarpetes.next(), diccionari);
+    }
+}
+</code></pre>
+            </div>
+
+            <h3>🚀 Instruccions de Posada en Marxa</h3>
+            <ol>
+                <li><strong>Copia el codi:</strong> Segueix els passos de la secció anterior.</li>
+                <li><strong>Autoritza l'script:</strong> En executar-lo per primer cop, Google et demanarà permisos. Clica a <em>Configuració avançada > Ves a [Nom] (no segur)</em>.</li>
+                <li><strong>Prepara les dades:</strong> Omple el full de <code>Dades</code> amb la llista d'alumnes i el full de <code>Configuracio</code> amb l'ID de la carpeta.</li>
+                <li><strong>Test:</strong> Posa el teu correu personal en les dues primeres files per comprovar que el format és correcte.</li>
+                <li><strong>Enviament massiu:</strong> Clica el menú <code>🚀 Enviament Massiu > 📧 ENVIAR CORREUS</code>.</li>
+            </ol>
+
+            <h3>⚠️ Consideracions Importants</h3>
+            <ul>
+                <li><strong>Límits de Google:</strong> Els comptes de Workspace for Education tenen un límit de 1.500 correus/dia.</li>
+                <li><strong>Temps d'execució:</strong> Google talla els scripts que duren més de 6-30 minuts. Si tens 800 correus i l'script s'atura, només cal tornar-lo a executar; continuarà per la fila on s'havia quedat gràcies a la marca d'estat "Enviat".</li>
+            </ul>
+        </div>
+    </main>
+    <footer>
+        <p>&copy; 2025 INS Ramon Turró i Darder - Cap d'Estudis</p>
+    </footer>
+    <script>
+        function copyCode(btn) {
+            const container = btn.closest('.code-container');
+            const code = container.querySelector('code').innerText;
+            navigator.clipboard.writeText(code).then(() => {
+                const span = btn.querySelector('span');
+                const originalText = span.innerText;
+                span.innerText = 'Copiat!';
+                setTimeout(() => span.innerText = originalText, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
